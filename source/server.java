@@ -52,9 +52,9 @@ public class server {
 		}
 
 		try {
-			String url = "jdbc:mysql://localhost:3306/finance" +
+			String url = "jdbc:mysql://cs4347-project.cujq9m2vjohw.us-east-1.rds.amazonaws.com:3306/finance" +
 						"?autoReconnect=true&useSSL=false";
-			return DriverManager.getConnection(url, "root", "1qazXSW@3edcVFR$");
+			return DriverManager.getConnection(url, "jnewhouse", "CrOliNAr");
 		}
 		catch(SQLException ex) {
 			System.out.println("SQLException: " + ex.getMessage());
