@@ -11,6 +11,15 @@ public class server {
 	static final int PORT = 10001;
 	static final int MAX_CON = 4;
 
+	static final String dbDriver = "com.mysql.jdbc.Driver";
+	static final String	url =
+		"jdbc:mysql://" + 
+		"cs4347-project.cujq9m2vjohw.us-east-1.rds.amazonaws.com:3306/finance" +
+		"?autoReconnect=true&useSSL=false";
+
+	static final String admin = "jnewhouse";
+	static final String adminPwd = "CrOliNAr";
+
 	public static void main(String[] args) {
 		Connection con = dbConnect();
 		if(con == null) {
@@ -20,6 +29,7 @@ public class server {
 
 		boolean listening = true;
 		try(ServerSocket ss = new ServerSocket(PORT, MAX_CON)) {
+			System.out.println("LISTENING ON PORT: " + PORT);
 			while(listening) {
 				ServerThread st = new ServerThread(ss.accept(), con);
 				st.start();
@@ -44,7 +54,7 @@ public class server {
 	public static Connection
 	dbConnect() {
 		try {
-			Class.forName("com.mysql.jdbc.Driver");
+			Class.forName(dbDriver);
 		}
 		catch(Exception ex) {
 			System.out.println(ex);
@@ -52,11 +62,11 @@ public class server {
 		}
 
 		try {
-			String url = "jdbc:mysql://" + 
+/*			String url = "jdbc:mysql://" + 
 						"cs4347-project.cujq9m2vjohw.us-east-1.rds." +
 						"amazonaws.com:3306/finance" +
-						"?autoReconnect=true&useSSL=false";
-			return DriverManager.getConnection(url, "jnewhouse", "CrOliNAr");
+						"?autoReconnect=true&useSSL=false"; */
+			return DriverManager.getConnection(url, admin, adminPwd);
 		}
 		catch(SQLException ex) {
 			System.out.println("SQLException: " + ex.getMessage());
