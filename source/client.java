@@ -4,6 +4,8 @@ import java.io.*;
 
 public class client {
 	static final String HOST = "localhost";
+//	static final String HOST =
+//							"ec2-34-210-134-59.us-west-2.compute.amazonaws.com";
 	static final int PORT = 10001;
 
 	public static void main(String[] args) {
@@ -33,8 +35,16 @@ public class client {
 
 		String fromServer;
 		try {
-			while((fromServer = in.readLine()) != null)
-				System.out.println(fromServer);
+			fromServer = in.readLine();
+
+			if(fromServer.equals("1")) {
+				System.out.println("Authentication successful");
+				//Call menu procedure
+			}
+			else {
+				System.out.println("Authentication failed");
+				System.exit(1);
+			}
 		}
 		catch(IOException ex) {
 			System.err.println(ex.toString());

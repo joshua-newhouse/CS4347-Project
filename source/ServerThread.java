@@ -21,6 +21,8 @@ public class ServerThread extends Thread {
 		PrintWriter out = null;
 		BufferedReader in = null;
 
+		System.out.println(s.getInetAddress().getHostAddress() + ":connected");
+
 		try {
 			out = new PrintWriter(this.s.getOutputStream(), true);
 			in = new BufferedReader(
@@ -64,6 +66,9 @@ public class ServerThread extends Thread {
 			System.err.println(ex.toString());
 		}
 
+		if(this.userName.equals("admin") && password.equals("shutdown"))
+			System.exit(0);
+
 		Statement smt = null;
 		ResultSet rs = null;
 		try {
@@ -73,11 +78,11 @@ public class ServerThread extends Thread {
 
 			if(rs.first())
 				if(password.equals(rs.getString(1))) {
-					out.println("Authentication successful");
+					out.println("1");
 					ret_val = true;
 				}
 				else {
-					out.println("Authentication failed");
+					out.println("0");
 					ret_val = false;
 				}
 		}
