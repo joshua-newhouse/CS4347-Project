@@ -53,6 +53,7 @@ public class ServerThread extends Thread {
 
 		if(this.userName.equals("admin") && password.equals("shutdown")) {
 			System.out.println("SHUTTING DOWN");
+			out.println("unavailable");
 			this.shutdown();
 			System.exit(0);
 		}

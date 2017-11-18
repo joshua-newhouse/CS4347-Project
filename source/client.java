@@ -41,8 +41,13 @@ public class client {
 				System.out.println("Authentication successful");
 				//Call menu procedure
 			}
-			else {
+			else if(fromServer.equals("0")){
 				System.out.println("Authentication failed");
+				System.exit(1);
+			}
+			else {
+				System.out.println("Cannot communicate with server:");
+				System.out.println("Message from server: " + fromServer);
 				System.exit(1);
 			}
 		}
