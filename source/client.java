@@ -1,20 +1,50 @@
+/* This is the command line client program.  The main purpose if for testing the
+   server but it can also suffice as a final client if the GUI client is a no go
+   or it can work as a java backend of the GUI client if necessary.
+
+   The command line client depends on:
+        client.java
+        Message.java
+        Login.java
+        account.java														  
+
+    The client:
+        - gets username and password from user via command line.
+        - creates a connection to the server via a socket.
+        - creates object input and output streams on the socket for comm.
+              back and forth with server.
+        - sends a login message to the server and receives response.
+        - if response is good authentication then it runs the menu, otherwise
+            termintates:
+            - The menu is an infinite loop that present the user with options.
+            - The user selection is read from the command line and the
+                appropriate message is sent to the server.
+            - The response is read from the server and presented to the user.
+            - When the user quits, the client informs the server of termination
+                and closes out the streams and socket.
+  */
+
 import java.util.Scanner;
 import java.net.*;
 import java.io.*;
 
 public class client {
+	/* Set host and port for communications with the server */
 //	static final String HOST = "localhost";
 	static final String HOST =
 							"ec2-34-210-134-59.us-west-2.compute.amazonaws.com";
 	static final int PORT = 10001;
 
-	private static Scanner input = null;
-	private	static Socket s = null;
-	private static ObjectInputStream objIn = null;
-	private static ObjectOutputStream objOut = null;
+	private static Scanner input = null;				//For user input
+	private	static Socket s = null;						//Comm. buffer w/server
+	private static ObjectInputStream objIn = null;		//Inbound comm. stream
+	private static ObjectOutputStream objOut = null;	//Outbound comm. stream
+
+	/* Username will persist for the client and be used for all queries. */
 	private static String uname = null;
 
 	public static void main(String[] args) {
+		/* Get user login information */
 		input = new Scanner(System.in);
 		System.out.print("Enter user name: ");
 		uname = input.next();
@@ -22,23 +52,29 @@ public class client {
 		String pw = input.next();
 
 		try {
+			/* Connect to server and set timeout for 5s of waiting for resp.  */
 			s = new Socket(HOST, PORT);
 			s.setSoTimeout(5000);
 
 			objIn = new ObjectInputStream(s.getInputStream());
 			objOut = new ObjectOutputStream(s.getOutputStream());
 
+			/* Send login message to server */
 			Message m = new Message(Message.LOGIN_MSG, new Login(uname, pw));
 			objOut.writeObject(m);
 			objOut.flush();
 			m = null;
 
+			/* Read login response from server.  If message is not type BOOL_MSG
+			   then server did not send correct message for some reason. 	  */
 			m = (Message)objIn.readObject();
 			if(m.getMessageType() != Message.BOOL_MSG) {
 				System.out.println("Login Failed: " + m.getMessageType());
 				System.out.println(m.getData().toString());
 			}
 
+			/* Server response is BOOL_MSG: true if login credentials verified,
+			   false otherwise.  If verified then run the menu fo the user.   */
 			if((Boolean)m.getData()) {
 				System.out.println("Login successful");
 				runMenu();
@@ -47,6 +83,7 @@ public class client {
 				System.out.println("Login failed");
 			}
 
+			/* Inform server of disconnect.  Close all streams. */
 			terminateClient();
 		}
 		catch(EOFException ex) {
@@ -59,12 +96,17 @@ public class client {
 		}
 	}
 
+	/* runMenu: In an infinite loop:
+                    - Presents the user with options.
+                    - reads user selection.
+                    - calls method to perform the selected action.
+                    - terminates on user input of 'q'.             */
 	private static void
 	runMenu() throws Exception {
 		char selection = '\0';
 
 		while(true) {
-			System.out.println("Welcome " + uname);
+			System.out.println("\nWelcome " + uname);
 			System.out.println("Please make a selection:\n");
 			System.out.println("1. View accounts information.");
 			System.out.println("2. View transactions.");
@@ -72,9 +114,9 @@ public class client {
 			System.out.println("4. Create transfer.");
 			System.out.println("q. Quit and logout.");
 
+			/* Get next input character and discard anything else */
 			selection = (char)System.in.read();
 			System.in.skip(Long.MAX_VALUE);
-
 
 			switch(selection) {
 			case '1':
@@ -93,6 +135,8 @@ public class client {
 		}
 	}
 
+	/* terminateClient:  Sends a termination message to the server and then
+		closes streams and finally the socket                                */
 	private static void
 	terminateClient() throws IOException {
 		if(objOut != null) {
@@ -112,17 +156,26 @@ public class client {
 			s.close();
 	}
 
+	/* showAccountInfo:
+        - Sends an ACCT_MSG to the server
+        - gets number of records to be returned by server
+        - for each record it gets the account record from the server and prints
+                                                                              */
 	private static void
 	showAccountInfo() throws Exception {
+		/* Send account request to server */
 		Message m = new Message(Message.ACCT_MSG, null);
 		objOut.writeObject(m);
 		objOut.flush();
 		m = null;
 
+		/* Receive message from server of number of records it returned */
 		account a = null;
 		m = (Message)objIn.readObject();
 		int records = m.getMessageType();
 		m = null;
+
+		/* Read each account record from server and write to command line */
 		while(records > 0) {
 			m = (Message)objIn.readObject();
 			a = (account)m.getData();

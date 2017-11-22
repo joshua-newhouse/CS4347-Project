@@ -66,11 +66,15 @@ public class ServerThread extends Thread {
 			this.handleSQLExc(ex);
 			ex.printStackTrace();
 		}
+		catch(EOFException ex) {
+			//Client terminated without sending a message.
+		}
 		catch(Exception ex) {
 			ex.printStackTrace();
 		}
-
-		this.shutdown();
+		finally {
+			this.shutdown();
+		}
 	}
 
 	private boolean
