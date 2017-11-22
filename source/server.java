@@ -62,10 +62,6 @@ public class server {
 		}
 
 		try {
-/*			String url = "jdbc:mysql://" + 
-						"cs4347-project.cujq9m2vjohw.us-east-1.rds." +
-						"amazonaws.com:3306/finance" +
-						"?autoReconnect=true&useSSL=false"; */
 			return DriverManager.getConnection(url, admin, adminPwd);
 		}
 		catch(SQLException ex) {
