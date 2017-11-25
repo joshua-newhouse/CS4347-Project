@@ -6,7 +6,9 @@
         client.java
         Message.java
         Login.java
-        account.java														  
+        account.java
+        Transaction.java
+        DisplayType.java														  
 
     The client:
         - gets username and password from user via command line.
@@ -65,17 +67,11 @@ public class client {
 			objOut.flush();
 			m = null;
 
-			/* Read login response from server.  If message is not type BOOL_MSG
-			   then server did not send correct message for some reason. 	  */
+			/* Read login response from server.  Server response is 0 if login
+			   credentials invalid, nonzero otherwise.  If verified then run
+			   the menu for the user. 	                                      */
 			m = (Message)objIn.readObject();
-			if(m.getMessageType() != Message.BOOL_MSG) {
-				System.out.println("Login Failed: " + m.getMessageType());
-				System.out.println(m.getData().toString());
-			}
-
-			/* Server response is BOOL_MSG: true if login credentials verified,
-			   false otherwise.  If verified then run the menu fo the user.   */
-			if((Boolean)m.getData()) {
+			if(m.getMessageType() != 0) {
 				System.out.println("Login successful");
 				runMenu();
 			}
@@ -86,7 +82,7 @@ public class client {
 			/* Inform server of disconnect.  Close all streams. */
 			terminateClient();
 		}
-		catch(EOFException ex) {
+		catch(SocketException | EOFException ex) {
 			System.out.println("Connection terminated by host");
 			System.exit(1);
 		}
@@ -120,9 +116,8 @@ public class client {
 
 			switch(selection) {
 			case '1':
-				showAccountInfo();
-				break;
 			case '2':
+				show(selection);
 				break;
 			case '3':
 				break;
@@ -156,32 +151,31 @@ public class client {
 			s.close();
 	}
 
-	/* showAccountInfo:
-        - Sends an ACCT_MSG to the server
+	/* show:
+        - Sends a message to the server requesting a DisplayType
         - gets number of records to be returned by server
-        - for each record it gets the account record from the server and prints
-                                                                              */
+        - for each record it prints to command line                           */
 	private static void
-	showAccountInfo() throws Exception {
+	show(char sel) throws Exception {
 		/* Send account request to server */
-		Message m = new Message(Message.ACCT_MSG, null);
+		int type = sel == '1' ? Message.ACCT_MSG : Message.TRANSACTION_MSG;
+		
+		Message m = new Message(type, null);
 		objOut.writeObject(m);
 		objOut.flush();
 		m = null;
 
 		/* Receive message from server of number of records it returned */
-		account a = null;
 		m = (Message)objIn.readObject();
 		int records = m.getMessageType();
 		m = null;
 
-		/* Read each account record from server and write to command line */
+		/* Read each record from server and write to command line */
 		while(records > 0) {
 			m = (Message)objIn.readObject();
-			a = (account)m.getData();
-			a.display();
+			DisplayType dt = (DisplayType)m.getData();
+			dt.display();
 			System.out.println("*************************\n");
-			a = null;
 			m = null;
 			records--;
 		}

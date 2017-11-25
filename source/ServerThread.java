@@ -1,5 +1,6 @@
 import java.net.*;
 import java.io.*;
+import java.lang.*;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -7,12 +8,33 @@ import java.sql.Statement;
 import java.sql.ResultSet;
 
 public class ServerThread extends Thread {
+	private static final String[] SQL_STMT = {
+		//Account info SQL
+		"select A.Account_Number, A.Account_Type, A.current_balance, " +
+			"A.Routing_Number, A.Interest_Rate " +
+				"from User_Accounts as A " +
+				"Left join UserToAccount as UA on A.Account_Number = " +
+				"UA.Account_Number Left join Users as U on U.SSN = " +
+				"UA.User_SSN where U.SSN=\"",
+		//Transaction info SQL
+		"select T.Transaction_ID, AT.Account_Number, T.Point_of_sale, " +
+			"T.Amount, T.date, AT.Type, AT.State " +
+			"from Transaction as T " +
+				"left join AcctToTrans as AT on " + 
+									"T.Transaction_ID = AT.Transaction_ID " +
+        		"left join UserToAccount as UA on " +
+									"AT.Account_Number = UA.Account_Number " +
+        		"left join Users as U on U.SSN = UA.User_SSN where U.SSN=\"",
+		//Login SQL
+		"SELECT password, SSN FROM Users WHERE username=\"",
+	};
+
 	private Socket s = null;
 	private ObjectOutputStream objOut = null;
 	private ObjectInputStream objIn = null;
 
 	private Connection con = null;
-	private String userName = null;
+	private int SSN = 0;
 
 	public ServerThread(Socket s, Connection con) {
 		super("ServerThread");
@@ -45,10 +67,8 @@ public class ServerThread extends Thread {
 						run = false;
 						break;
 					case Message.ACCT_MSG:
-						this.getAccountInfo();
-						break;
 					case Message.TRANSACTION_MSG:
-						this.getTransactionInfo();
+						getQuery(type);
 						break;
 					case Message.CHG_PWD_MSG:
 						this.changePassword();
@@ -78,14 +98,15 @@ public class ServerThread extends Thread {
 	}
 
 	private boolean
-	authenticate() throws IOException, SQLException, ClassNotFoundException {
+	authenticate() throws Exception {
 		boolean ret_val = false;
+		String userName = null;
 		String password = null;
 
 		Message m = (Message)this.objIn.readObject();
 		if(m.getMessageType() == Message.LOGIN_MSG) {
 			Login l = (Login)m.getData();
-			this.userName = l.getUsername();
+			userName = l.getUsername();
 			password = l.getPassword();
 			m = null;
 		}
@@ -98,26 +119,26 @@ public class ServerThread extends Thread {
 			return false;
 		}
 
-		if(this.userName.equals("admin") && password.equals("shutdown")) {
+		if(userName.equals("admin") && password.equals("shutdown")) {
 			System.out.println("SHUTTING DOWN");
 			this.shutdown();
 			this.con.close();
+			System.out.println("Disconnected from database");
 			System.exit(0);
 		}
 
 		Statement smt = this.con.createStatement();
-		ResultSet rs = smt.executeQuery(
-			"SELECT password FROM Users WHERE username=\"" +
-			this.userName + "\"");
+		ResultSet rs = smt.executeQuery(SQL_STMT[2] + userName + "\"");
 
 		if(rs.first()) {
-			if(password.equals(rs.getString(1))) {
-				m = new Message(Message.BOOL_MSG, true);
+			if(password.equals(rs.getString("password"))) {
+				m = new Message(1, null);
 				objOut.writeObject(m);
+				this.SSN = rs.getInt("SSN");
 				ret_val = true;
 			}
 			else {
-				m = new Message(Message.BOOL_MSG, false);
+				m = new Message(0, null);
 				objOut.writeObject(m);
 				ret_val = false;
 			}
@@ -159,14 +180,17 @@ public class ServerThread extends Thread {
 	}
 
 	private void
-	getAccountInfo() throws IOException, SQLException {
-		String query =
-			"select A.Account_Number, A.Account_Type, A.current_balance, " +
-			"A.Routing_Number, A.Interest_Rate " +
-				"from User_Accounts as A " +
-				"Left join UserToAccount as UA on A.Account_Number = " +
-				"UA.Account_Number Left join Users as U on U.SSN = " +
-				"UA.User_SSN where U.username=\"" + this.userName + "\"";
+	getQuery(int msgType) throws IOException, SQLException {
+		int idx = 0;
+		switch(msgType) {
+		case Message.TRANSACTION_MSG:
+			idx = 1;
+			break;
+		default:
+			idx = 0;
+		}
+
+		String query = SQL_STMT[idx] + this.SSN + "\"";
 
 		Statement smt = this.con.createStatement();
 		ResultSet rs = smt.executeQuery(query);
@@ -180,12 +204,8 @@ public class ServerThread extends Thread {
 		m = null;
 
 		while(rs.next()) {
-			int an = rs.getInt("Account_Number");
-			int type = rs.getInt("Account_Type");
-			float b = rs.getFloat("current_balance");
-			int rn = rs.getInt("Routing_Number");
-			float ir = rs.getFloat("Interest_Rate");
-			m = new Message(Message.ACCT_MSG, new account(an, type, b, rn, ir));
+			m = new Message(msgType, null);
+			m.parse(rs);
 			objOut.writeObject(m);
 			m = null;
 		}
@@ -196,11 +216,6 @@ public class ServerThread extends Thread {
 			rs.close();
 		if(smt != null)
 			smt.close();
-	}
-
-	private void
-	getTransactionInfo() {
-
 	}
 
 	private void

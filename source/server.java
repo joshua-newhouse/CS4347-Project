@@ -1,5 +1,6 @@
 import java.net.*;
 import java.io.*;
+import java.lang.*;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -16,59 +17,49 @@ public class server {
 		"jdbc:mysql://" + 
 		"cs4347-project.cujq9m2vjohw.us-east-1.rds.amazonaws.com:3306/finance" +
 		"?autoReconnect=true&useSSL=false";
+	static Connection con = null;
 
 	static final String admin = "jnewhouse";
 	static final String adminPwd = "CrOliNAr";
 
 	public static void main(String[] args) {
-		Connection con = dbConnect();
-		if(con == null) {
-			System.err.println("Error connecting to database");
-			System.exit(1);
-		}
-
-		boolean listening = true;
-		try(ServerSocket ss = new ServerSocket(PORT, MAX_CON)) {
+		try {
+			con = dbConnect();
+			ServerSocket ss = new ServerSocket(PORT, MAX_CON);
 			System.out.println("LISTENING ON PORT: " + PORT);
-			while(listening) {
+
+			while(true) {
 				ServerThread st = new ServerThread(ss.accept(), con);
 				st.start();
 			}
 		}
-		catch(IOException e) {
-			System.err.println("Could not listen on port " + PORT);
-			System.exit(-1);
-		}
-
-		try {
-			con.close();
-		}
 		catch(SQLException ex) {
 			System.out.println("SQLException: " + ex.getMessage());
 			System.out.println("SQLState: " + ex.getSQLState());
 			System.out.println("VendorError: " + ex.getErrorCode());
-			System.exit(1);
+		}
+		catch(Exception ex) {
+			ex.printStackTrace();
+		}
+		finally {
+			try {
+				con.close();
+				System.out.println("Disconnected from database");
+			}
+			catch(SQLException ex) {
+				System.out.println("SQLException: " + ex.getMessage());
+				System.out.println("SQLState: " + ex.getSQLState());
+				System.out.println("VendorError: " + ex.getErrorCode());
+				System.exit(1);
+			}
+
+			System.exit(0);
 		}
 	}
 
 	public static Connection
-	dbConnect() {
-		try {
-			Class.forName(dbDriver);
-		}
-		catch(Exception ex) {
-			System.out.println(ex);
-			return null;
-		}
-
-		try {
-			return DriverManager.getConnection(url, admin, adminPwd);
-		}
-		catch(SQLException ex) {
-			System.out.println("SQLException: " + ex.getMessage());
-			System.out.println("SQLState: " + ex.getSQLState());
-			System.out.println("VendorError: " + ex.getErrorCode());
-			return null;
-		}
+	dbConnect() throws Exception {
+		Class.forName(dbDriver);
+		return DriverManager.getConnection(url, admin, adminPwd);
 	}
 }

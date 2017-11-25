@@ -1,6 +1,8 @@
 import java.io.Serializable;
+import java.sql.SQLException;
+import java.sql.ResultSet;
 
-public class account implements Serializable {
+public class account implements Serializable, DisplayType {
 	private static String[] accountTypes = {
 		"Savings", "Checking"
 	};
@@ -11,12 +13,22 @@ public class account implements Serializable {
 	private int routingNumber = 0;
 	private float interestRate = 0.0f;
 
-	public account(int an, int at, float b, int rn, float ir) {
+	public
+	account(int an, int at, float b, int rn, float ir) {
 		this.accountNumber = an;
 		this.accountType = accountTypes[at - 1];
 		this.balance = b;
 		this.routingNumber = rn;
 		this.interestRate = ir;
+	}
+
+	public
+	account(ResultSet rs) throws SQLException {
+		this.accountNumber = rs.getInt("Account_Number");
+		this.accountType = accountTypes[rs.getInt("Account_Type") - 1];
+		this.balance = rs.getFloat("current_balance");
+		this.routingNumber = rs.getInt("Routing_Number");
+		this.interestRate = rs.getFloat("Interest_Rate");
 	}
 
 	public void
