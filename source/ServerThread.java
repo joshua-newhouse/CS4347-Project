@@ -36,21 +36,25 @@ public class ServerThread extends Thread {
 	private Connection con = null;
 	private int SSN = 0;
 
-	public ServerThread(Socket s, Connection con) {
+	public
+	ServerThread(Socket s, Connection con) {
 		super("ServerThread");
 		this.s = s;
 		this.con = con;
 
 		try {
+			this.s.setSoTimeout(60000);
 			this.objOut = new ObjectOutputStream(this.s.getOutputStream());
 			this.objIn = new ObjectInputStream(this.s.getInputStream());
 		}
-		catch(IOException ex) {
+		catch(Exception ex) {
 			ex.printStackTrace();
+			this.shutdown();
 		}
 	}
 
-	public void run() {
+	public void
+	run() {
 		System.out.println(s.getInetAddress().getHostAddress() + ":connected");
 
 		try {
@@ -99,52 +103,45 @@ public class ServerThread extends Thread {
 
 	private boolean
 	authenticate() throws Exception {
+		Message out = null;
 		boolean ret_val = false;
 		String userName = null;
 		String password = null;
 
-		Message m = (Message)this.objIn.readObject();
-		if(m.getMessageType() == Message.LOGIN_MSG) {
-			Login l = (Login)m.getData();
+		Statement smt = null;
+		ResultSet rs = null;
+
+		Message in = (Message)this.objIn.readObject();
+		if(in.getMessageType() == Message.LOGIN_MSG) {
+			Login l = (Login)in.getData();
 			userName = l.getUsername();
 			password = l.getPassword();
-			m = null;
-		}
-		else {
-			m = null;
-			m = new Message(Message.STRING_MSG, "Authentication Failure");
-			this.objOut.writeObject(m);
-			this.objOut.flush();
-			m = null;
-			return false;
-		}
 
-		if(userName.equals("admin") && password.equals("shutdown")) {
-			System.out.println("SHUTTING DOWN");
-			this.shutdown();
-			this.con.close();
-			System.out.println("Disconnected from database");
-			System.exit(0);
-		}
+			if(userName.equals("admin") && password.equals("shutdown")) {
+				System.out.println("SHUTTING DOWN");
+				this.shutdown();
+				this.con.close();
+				System.out.println("Disconnected from database");
+				System.exit(0);
+			}
 
-		Statement smt = this.con.createStatement();
-		ResultSet rs = smt.executeQuery(SQL_STMT[2] + userName + "\"");
+			smt = this.con.createStatement();
+			rs = smt.executeQuery(SQL_STMT[2] + userName + "\"");
 
-		if(rs.first()) {
-			if(password.equals(rs.getString("password"))) {
-				m = new Message(1, null);
-				objOut.writeObject(m);
+			if(rs.first() && password.equals(rs.getString("password"))) {
+				out = Message.setAuthenticated(true);
 				this.SSN = rs.getInt("SSN");
 				ret_val = true;
 			}
-			else {
-				m = new Message(0, null);
-				objOut.writeObject(m);
-				ret_val = false;
-			}
 		}
 
-		objOut.flush();
+		if(out == null)
+			out = Message.setAuthenticated(false);
+
+		this.objOut.writeObject(out);
+		this.objOut.flush();
+		out = null;
+		in = null;
 
 		if(rs != null)
 			rs.close();
@@ -181,14 +178,7 @@ public class ServerThread extends Thread {
 
 	private void
 	getQuery(int msgType) throws IOException, SQLException {
-		int idx = 0;
-		switch(msgType) {
-		case Message.TRANSACTION_MSG:
-			idx = 1;
-			break;
-		default:
-			idx = 0;
-		}
+		int idx = msgType == Message.TRANSACTION_MSG ? 1 : 0;
 
 		String query = SQL_STMT[idx] + this.SSN + "\"";
 

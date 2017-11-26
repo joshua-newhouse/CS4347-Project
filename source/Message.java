@@ -4,12 +4,12 @@ import java.sql.ResultSet;
 
 public class Message implements Serializable {
 	public static final int TERMINATE = 100;
-	public static final int ACCT_MSG = 0;
-	public static final int TRANSACTION_MSG = 1;
-	public static final int LOGIN_MSG = 2;
-	public static final int STRING_MSG = 3;
-	public static final int CHG_PWD_MSG = 4;
-	public static final int TRANSFER_MSG = 5;
+	public static final int ACCT_MSG = 1;
+	public static final int TRANSACTION_MSG = 2;
+	public static final int LOGIN_MSG = 3;
+	public static final int STRING_MSG = 4;
+	public static final int CHG_PWD_MSG = 5;
+	public static final int TRANSFER_MSG = 6;
 
 	public int messageType = 0;
 	public Object data = null;
@@ -28,6 +28,16 @@ public class Message implements Serializable {
 	public Object
 	getData() {
 		return this.data;
+	}
+
+	public static Message
+	setAuthenticated(boolean isAuthenticated) {
+		return isAuthenticated ? new Message(1, null) : new Message(0, null);
+	}
+
+	public boolean
+	isAuthenticated() {
+		return this.messageType == 0 ? false : true;
 	}
 
 	public boolean

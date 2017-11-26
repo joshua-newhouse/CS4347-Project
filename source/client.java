@@ -71,7 +71,8 @@ public class client {
 			   credentials invalid, nonzero otherwise.  If verified then run
 			   the menu for the user. 	                                      */
 			m = (Message)objIn.readObject();
-			if(m.getMessageType() != 0) {
+			if(m.isAuthenticated()) {
+				m = null;
 				System.out.println("Login successful");
 				runMenu();
 			}
