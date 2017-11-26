@@ -62,15 +62,14 @@ public class client {
 			objOut = new ObjectOutputStream(s.getOutputStream());
 
 			/* Send login message to server */
-			Message m = new Message(Message.LOGIN_MSG, new Login(uname, pw));
-			objOut.writeObject(m);
+			objOut.writeObject(
+				new Message(Message.LOGIN_MSG, new Login(uname, pw)));
 			objOut.flush();
-			m = null;
 
 			/* Read login response from server.  Server response is 0 if login
 			   credentials invalid, nonzero otherwise.  If verified then run
 			   the menu for the user. 	                                      */
-			m = (Message)objIn.readObject();
+			Message m = (Message)objIn.readObject();
 			if(m.isAuthenticated()) {
 				m = null;
 				System.out.println("Login successful");
@@ -121,6 +120,7 @@ public class client {
 				show(selection);
 				break;
 			case '3':
+				changePassword();
 				break;
 			case '4':
 				break;
@@ -136,10 +136,8 @@ public class client {
 	private static void
 	terminateClient() throws IOException {
 		if(objOut != null) {
-			Message m = new Message(Message.TERMINATE);
-			objOut.writeObject(m);
+			objOut.writeObject(new Message(Message.TERMINATE));
 			objOut.flush();
-			m = null;
 		}
 
 		if(input != null)
@@ -161,13 +159,11 @@ public class client {
 		/* Send account request to server */
 		int type = sel == '1' ? Message.ACCT_MSG : Message.TRANSACTION_MSG;
 		
-		Message m = new Message(type);
-		objOut.writeObject(m);
+		objOut.writeObject(new Message(type));
 		objOut.flush();
-		m = null;
 
 		/* Receive message from server of number of records it returned */
-		m = (Message)objIn.readObject();
+		Message m = (Message)objIn.readObject();
 		int records = m.getMessageType();
 		m = null;
 
@@ -180,5 +176,33 @@ public class client {
 			m = null;
 			records--;
 		}
+	}
+
+	/* changePassword:
+        - Gets new password from stdin twice to verify
+        - Sends the update message to the server with the new password
+        - Gives feedback to used if update was successful or not              */
+	private static void
+	changePassword() throws Exception {
+		System.out.print("Enter new password: ");
+		String pw1 = input.next();
+
+		System.out.print("Verify new password: ");
+		String pw2 = input.next();
+
+		System.out.println("");
+
+		if(!pw1.equals(pw2)) {
+			System.out.println("Error: Passwords should match");
+			return;
+		}
+
+		objOut.writeObject(new Message(Message.CHG_PWD_MSG, pw1));
+		objOut.flush();
+
+		if(((Message)objIn.readObject()).isAuthenticated())
+			System.out.println("Password changed");
+		else
+			System.out.println("Password failed to change");
 	}
 }

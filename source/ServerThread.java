@@ -27,6 +27,12 @@ public class ServerThread extends Thread {
         		"left join Users as U on U.SSN = UA.User_SSN where U.SSN=\"",
 		//Login SQL
 		"SELECT password, SSN FROM Users WHERE username=\"",
+		//Change password 1               //Change password 2
+		"update Users set password = \"", "\" where Users.SSN=\""
+		//Create transfer, insert transaction, adjust funds as necessary
+		//insert into Transaction (Point_of_sale, Amount, date) values ("online", 100, now());
+		//insert into AcctToTrans (Account_Number, Transaction_ID, Type, State) values (1, last_insert_id(), "credit", 0);
+		//insert into AcctToTrans (Account_Number, Transaction_ID, Type, State) values (2, last_insert_id(), "debit", 0);
 	};
 
 	private Socket s = null;
@@ -75,7 +81,7 @@ public class ServerThread extends Thread {
 						getQuery(type);
 						break;
 					case Message.CHG_PWD_MSG:
-						this.changePassword();
+						this.changePassword((String)command.getData());
 						break;
 					case Message.TRANSFER_MSG:
 						this.createTransfer();
@@ -92,6 +98,10 @@ public class ServerThread extends Thread {
 		}
 		catch(EOFException ex) {
 			//Client terminated without sending a message.
+		}
+		catch(InvalidClassException ex) {
+			//Client sent an invalid message object.  Terminate connection.
+			System.out.println(ex.toString());
 		}
 		catch(Exception ex) {
 			ex.printStackTrace();
@@ -212,8 +222,27 @@ public class ServerThread extends Thread {
 	}
 
 	private void
-	changePassword() {
+	changePassword(String newPW) throws Exception {
+		String update = SQL_STMT[3] + newPW + SQL_STMT[4] + this.SSN + "\"";
+		Statement smt = this.con.createStatement();
 
+		Message m = new Message();
+		try {
+			smt.executeUpdate(update);
+			m.setAuthenticated(true);
+		}
+		catch(SQLException ex) {
+			handleSQLExc(ex);
+			m.setAuthenticated(false);
+		}
+		finally {
+			objOut.writeObject(m);
+			objOut.flush();
+			m = null;
+		}
+
+		if(smt != null)
+			smt.close();
 	}
 
 	private void
@@ -223,6 +252,6 @@ public class ServerThread extends Thread {
 
 	private void
 	unknownCommand() {
-
+		//Do nothing
 	}
 }
