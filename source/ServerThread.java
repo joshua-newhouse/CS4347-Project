@@ -129,14 +129,17 @@ public class ServerThread extends Thread {
 			rs = smt.executeQuery(SQL_STMT[2] + userName + "\"");
 
 			if(rs.first() && password.equals(rs.getString("password"))) {
-				out = Message.setAuthenticated(true);
 				this.SSN = rs.getInt("SSN");
+				out = new Message();
+				out.setAuthenticated(true);
 				ret_val = true;
 			}
 		}
 
-		if(out == null)
-			out = Message.setAuthenticated(false);
+		if(out == null) {
+			out = new Message();
+			out.setAuthenticated(false);
+		}
 
 		this.objOut.writeObject(out);
 		this.objOut.flush();

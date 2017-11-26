@@ -15,6 +15,16 @@ public class Message implements Serializable {
 	public Object data = null;
 
 	public
+	Message() {
+		//Default constructor does nothing
+	}
+
+	public
+	Message(int msgType) {
+		this.messageType = msgType;
+	}
+	
+	public
 	Message(int msgType, Object d) {
 		this.messageType = msgType;
 		this.data = d;
@@ -30,9 +40,9 @@ public class Message implements Serializable {
 		return this.data;
 	}
 
-	public static Message
+	public void
 	setAuthenticated(boolean isAuthenticated) {
-		return isAuthenticated ? new Message(1, null) : new Message(0, null);
+		this.messageType = isAuthenticated ? 1 : 0;
 	}
 
 	public boolean

@@ -32,9 +32,9 @@ import java.io.*;
 
 public class client {
 	/* Set host and port for communications with the server */
-//	static final String HOST = "localhost";
-	static final String HOST =
-							"ec2-34-210-134-59.us-west-2.compute.amazonaws.com";
+	static final String HOST = "localhost";
+//	static final String HOST =
+//							"ec2-34-210-134-59.us-west-2.compute.amazonaws.com";
 	static final int PORT = 10001;
 
 	private static Scanner input = null;				//For user input
@@ -136,7 +136,7 @@ public class client {
 	private static void
 	terminateClient() throws IOException {
 		if(objOut != null) {
-			Message m = new Message(Message.TERMINATE, null);
+			Message m = new Message(Message.TERMINATE);
 			objOut.writeObject(m);
 			objOut.flush();
 			m = null;
@@ -161,7 +161,7 @@ public class client {
 		/* Send account request to server */
 		int type = sel == '1' ? Message.ACCT_MSG : Message.TRANSACTION_MSG;
 		
-		Message m = new Message(type, null);
+		Message m = new Message(type);
 		objOut.writeObject(m);
 		objOut.flush();
 		m = null;
