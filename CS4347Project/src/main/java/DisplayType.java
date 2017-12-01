@@ -1,0 +1,3 @@
+interface DisplayType {
+	void display();
+}
