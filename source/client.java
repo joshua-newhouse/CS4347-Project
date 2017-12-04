@@ -123,6 +123,7 @@ public class client {
 				changePassword();
 				break;
 			case '4':
+				createTransfer();
 				break;
 			case 'q':
 				return;
@@ -204,5 +205,34 @@ public class client {
 			System.out.println("Password changed");
 		else
 			System.out.println("Password failed to change");
+	}
+
+	private static void
+	createTransfer() throws Exception {
+		System.out.print("Enter from account number: ");
+		int fromAccount = input.nextInt();
+
+		System.out.print("Enter to account number: ");
+		int toAccount = input.nextInt();
+
+		System.out.print("Enter amount to transfer: ");
+		float amountToTrans = input.nextFloat();
+
+		System.out.println("");
+
+		if(amountToTrans < 0.0f) {
+			System.out.println("Cannot tranfer amounts less than $0.00");
+			return;
+		}
+
+		objOut.writeObject(new Message(Message.TRANSFER_MSG,
+			new Transfer(fromAccount, toAccount, amountToTrans)));
+		objOut.flush();
+
+		Message m = null;
+		if((m = (Message)objIn.readObject()).isAuthenticated())
+			System.out.println("Transfer successful");
+		else
+			System.out.println("Transfer failed: " + (String)m.getData());
 	}
 }

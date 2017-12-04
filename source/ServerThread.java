@@ -9,14 +9,14 @@ import java.sql.ResultSet;
 
 public class ServerThread extends Thread {
 	private static final String[] SQL_STMT = {
-		//Account info SQL
+		//0 Account info SQL
 		"select A.Account_Number, A.Account_Type, A.current_balance, " +
 			"A.Routing_Number, A.Interest_Rate " +
 				"from User_Accounts as A " +
 				"Left join UserToAccount as UA on A.Account_Number = " +
 				"UA.Account_Number Left join Users as U on U.SSN = " +
 				"UA.User_SSN where U.SSN=\"",
-		//Transaction info SQL
+		//1 Transaction info SQL
 		"select T.Transaction_ID, AT.Account_Number, T.Point_of_sale, " +
 			"T.Amount, T.date, AT.Type, AT.State " +
 			"from Transaction as T " +
@@ -25,14 +25,27 @@ public class ServerThread extends Thread {
         		"left join UserToAccount as UA on " +
 									"AT.Account_Number = UA.Account_Number " +
         		"left join Users as U on U.SSN = UA.User_SSN where U.SSN=\"",
-		//Login SQL
+		//2 Login SQL
 		"SELECT password, SSN FROM Users WHERE username=\"",
-		//Change password 1               //Change password 2
-		"update Users set password = \"", "\" where Users.SSN=\""
-		//Create transfer, insert transaction, adjust funds as necessary
-		//insert into Transaction (Point_of_sale, Amount, date) values ("online", 100, now());
-		//insert into AcctToTrans (Account_Number, Transaction_ID, Type, State) values (1, last_insert_id(), "credit", 0);
-		//insert into AcctToTrans (Account_Number, Transaction_ID, Type, State) values (2, last_insert_id(), "debit", 0);
+		//3 Change password 1               //4 Change password 2
+		"update Users set password = \"", "\" where Users.SSN=\"",
+		//5 Transfer
+		"select current_balance from User_Accounts as A Where Exists " +
+			"(select Account_Number from UserToAccount as UA where " +
+			"A.Account_Number = UA.Account_Number and UA.Account_Number = %d " +
+			"and UA.User_SSN = \"%s\")",
+		//6 Transfer
+		"select current_balance from User_Accounts where Account_Number = %d",
+		//7 Transfer
+		"update User_Accounts set current_balance = %f " +
+			"where Account_Number = %d",
+		//8 Transfer
+		"insert into Transaction (Point_of_sale, Amount, date) " +
+			"values (\"online\", %f, now())",
+		//9 Transfer
+		"insert into AcctToTrans " +
+			"(Account_Number, Transaction_ID, Type, State) " +
+			"values (%d, last_insert_id(), \"%s\", 0)",
 	};
 
 	private Socket s = null;
@@ -84,7 +97,7 @@ public class ServerThread extends Thread {
 						this.changePassword((String)command.getData());
 						break;
 					case Message.TRANSFER_MSG:
-						this.createTransfer();
+						this.createTransfer((Transfer)command.getData());
 						break;
 					default:
 						this.unknownCommand();
@@ -246,8 +259,88 @@ public class ServerThread extends Thread {
 	}
 
 	private void
-	createTransfer() {
+	createTransfer(Transfer tx) throws Exception {
+		this.con.setAutoCommit(false);
 
+		float fromBalance = 0.0f;
+		float toBalance = 0.0f;
+
+		int fromAct = tx.getAcctNumber(Transfer.FROM_ACCT);
+		int toAct = tx.getAcctNumber(Transfer.TO_ACCT);
+		float amt = tx.getAmount();
+
+		Statement smt = null;
+		Message m = new Message(Message.STRING_MSG);
+		m.setAuthenticated(true);
+		try {
+			String query = String.format(SQL_STMT[5], fromAct, this.SSN);
+			smt = this.con.createStatement();
+			ResultSet rs = smt.executeQuery(query);
+
+			if(rs.next())
+				fromBalance = rs.getFloat("current_balance");
+			else
+				throw new
+					FailException("No account number associated with user");
+
+			query = String.format(SQL_STMT[6], toAct);
+			rs = smt.executeQuery(query);
+
+			if(rs.next())
+				toBalance = rs.getFloat("current_balance");
+			else
+				throw new
+					FailException("No account to transfer to");
+
+			fromBalance -= amt;
+			toBalance += amt;
+
+			if(fromBalance < 0.0f)
+				throw new
+					FailException("Insufficient funds for transfer");
+
+			//Update from balance
+			query = String.format(SQL_STMT[7], fromBalance, fromAct);
+			smt.executeUpdate(query);
+
+			//Update to balance
+			query = String.format(SQL_STMT[7], toBalance, toAct);
+			smt.executeUpdate(query);
+
+			//Insert new transaction
+			query = String.format(SQL_STMT[8], amt);
+			smt.executeUpdate(query);
+
+			//Insert association between transaction and from account
+			query = String.format(SQL_STMT[9], fromAct, "debit");
+			smt.executeUpdate(query);
+
+			//Insert association between transaction and to account
+			query = String.format(SQL_STMT[9], toAct, "credit");
+			smt.executeUpdate(query);
+
+			this.con.commit();
+		}
+		catch(SQLException ex) {
+			m.setData("Server Error");
+			m.setAuthenticated(false);
+			ex.printStackTrace();
+			this.con.rollback();
+		}
+		catch(FailException ex) {
+			m.setData(ex.toString());
+			m.setAuthenticated(false);
+		}
+		finally {
+			if(smt != null)
+				smt.close();
+
+			objOut.writeObject(m);
+			objOut.flush();
+			m = null;
+
+			this.con.setAutoCommit(true);
+		}
 	}
 
 	private void

@@ -2,13 +2,13 @@ CC = javac
 
 all : server client messages
 
-server : server.java ServerThread.java messages
-	$(CC) server.java ServerThread.java
+server : server.java ServerThread.java FailException.java messages
+	$(CC) server.java ServerThread.java FailException.java
 
 client : client.java messages
 	$(CC) client.java
 
-messages : Message account Login Transaction
+messages : Message account Login Transaction Transfer
 
 Message : Message.java
 	$(CC) Message.java
@@ -24,6 +24,9 @@ Transaction : Transaction.java DisplayType
 
 DisplayType : DisplayType.java
 	$(CC) DisplayType.java
+
+Transfer : Transfer.java
+	$(CC) Transfer.java
 
 clean :
 	rm -f *.class
