@@ -32,9 +32,9 @@ import java.io.*;
 
 public class client {
 	/* Set host and port for communications with the server */
-	static final String HOST = "localhost";
-//	static final String HOST =
-//							"ec2-34-210-134-59.us-west-2.compute.amazonaws.com";
+//	static final String HOST = "localhost";
+	static final String HOST =
+							"ec2-34-210-134-59.us-west-2.compute.amazonaws.com";
 	static final int PORT = 10001;
 
 	private static Scanner input = null;				//For user input
